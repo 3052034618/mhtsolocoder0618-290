@@ -14,7 +14,7 @@ const NAV = [
   { to: '/recharge', label: '充值中心', icon: Wallet },
   { to: '/marketing', label: '营销中心', icon: Megaphone },
   { to: '/employees', label: '员工管理', icon: UsersRound, admin: true },
-  { to: '/employees/commission', label: '提成报表', icon: BarChart3, admin: true },
+  { to: '/commission', label: '提成报表', icon: BarChart3, admin: true },
   { to: '/settings', label: '系统设置', icon: Settings, admin: true },
 ];
 

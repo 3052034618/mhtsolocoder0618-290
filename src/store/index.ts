@@ -81,6 +81,12 @@ export const useStore = create<AppState>()(
       },
 
       initData: () => {
+        const s0 = get();
+        if (s0.initialized && s0.members.length > 0) {
+          // 已有用户真实数据，不重新覆盖
+          set({ initialized: true });
+          return;
+        }
         const members = generateMockMembers();
         const transactions = generateMockTransactions(members);
         const packageCards = generateMockPackageCards(members);
@@ -104,7 +110,7 @@ export const useStore = create<AppState>()(
         if (emp) set({ currentEmployeeId: emp.id });
         return emp || null;
       },
-      logout: () => set({ currentEmployeeId: null, initialized: false }),
+      logout: () => set({ currentEmployeeId: null }),
       getCurrentEmployee: () => get().employees.find(e => e.id === get().currentEmployeeId),
 
       addMember: (m) => {

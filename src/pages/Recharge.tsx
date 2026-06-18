@@ -9,7 +9,7 @@ import { useToast } from '@/components/Toast';
 import { Avatar } from '@/components/Avatar';
 import { LevelBadge } from '@/components/LevelBadge';
 import { Modal } from '@/components/Modal';
-import { formatCurrency, formatDate } from '@/utils';
+import { calcCommission, formatCurrency, formatDate, levelMultiplier } from '@/utils';
 
 export const Recharge: React.FC = () => {
   const [sp, setSp] = useSearchParams();
@@ -24,6 +24,8 @@ export const Recharge: React.FC = () => {
   const services = useStore(s => s.serviceItems);
   const addBalance = useStore(s => s.addBalance);
   const addPackageCard = useStore(s => s.addPackageCard);
+  const addTransaction = useStore(s => s.addTransaction);
+  const currentEmp = useStore(s => s.currentUser);
 
   const [tab, setTab] = useState<'balance' | 'pkg'>(tabParam === 'pkg' ? 'pkg' : 'balance');
   const [memberId, setMemberId] = useState<string | null>(mid || null);
@@ -68,24 +70,44 @@ export const Recharge: React.FC = () => {
     if (!prod) return;
     addPackageCard(member.id, prod, prod.price);
     const svc = services.find(s => s.id === prod.serviceItemId);
-    const txRecord: any = {
+    const empId = currentEmp?.id || '';
+    const empName = currentEmp?.name || '-';
+    const commission = calcCommission(
+      { commissionType: 'percent', commissionValue: 5, price: prod.price } as any,
+      1, prod.price,
+    );
+    const pointsEarned = Math.floor(prod.price / 10 * levelMultiplier(member.level));
+    const txBase = {
       memberId: member.id, memberName: member.name,
       items: [{
         serviceItemId: prod.serviceItemId,
         serviceItemName: `${prod.name}购买`,
         price: prod.price,
         quantity: 1,
-        employeeId: '', employeeName: '-',
-        usePackage: false, commissionAmount: 0,
+        employeeId: empId,
+        employeeName: empName,
+        usePackage: false,
+        commissionAmount: commission,
+        actualAmount: prod.price,
       }],
       subtotal: prod.price,
-      packageDeducted: 0, pointsUsed: 0, pointsEarned: 0,
-      balanceUsed: 0, cashPaid: prod.price, wechatPaid: 0, alipayPaid: 0,
-      totalPaid: prod.price, createdBy: '',
+      packageDeducted: 0,
+      pointsUsed: 0,
+      pointsEarned,
+      balanceUsed: 0,
+      cashPaid: prod.price,
+      wechatPaid: 0,
+      alipayPaid: 0,
+      totalPaid: prod.price,
+      createdBy: empId,
     };
+    addTransaction(txBase, {
+      memberId: member.id, balanceUsed: 0, pointsUsed: 0,
+      pointsEarned, totalPaid: prod.price,
+    }, []);
     setSuccessInfo({
       type: '套餐购买',
-      text: `${svc?.name || prod.serviceItemName} ${prod.totalCount + prod.bonusCount}次已激活`,
+      text: `${svc?.name || prod.serviceItemName} ${prod.totalCount + prod.bonusCount}次已激活（+${pointsEarned}积分）`,
     });
     setSuccessOpen(true);
     setTimeout(() => setSuccessOpen(false), 1800);

@@ -86,30 +86,85 @@ export const Cashier: React.FC = () => {
   const addToCart = (s: ServiceItem) => {
     // Find available package
     const pkg = memberPkgs.find(p => p.serviceItemId === s.id);
+    const pkgRemaining = pkg ? pkg.totalCount - pkg.usedCount : 0;
+    // 计算该serviceId当前购物车里已经用了多少次套餐（usePackage=true）
+    const alreadyUsedInCart = cart
+      .filter(c => c.service.id === s.id && c.usePackage)
+      .reduce((sum, c) => sum + c.quantity, 0);
+    const pkgAvailable = pkg ? pkgRemaining - alreadyUsedInCart : 0;
+
     const exist = cart.find(c => c.service.id === s.id && !c.usePackage);
     if (exist) {
       setCart(cart.map(c => c === exist ? { ...c, quantity: c.quantity + 1 } : c));
       return;
     }
+    // 如果套餐有剩余，默认用套餐
+    const usePkg = pkgAvailable > 0;
+    const defaultPkgId = usePkg ? pkg!.id : undefined;
     setCart([...cart, {
       service: s,
       quantity: 1,
       employeeId: defaultEmp?.id || '',
       employeeName: defaultEmp?.name || '',
-      usePackage: !!pkg,
-      packageId: pkg?.id,
+      usePackage: usePkg,
+      packageId: defaultPkgId,
     }]);
-    // Consume package if possible
-    if (pkg) {
-      toast.show(`已匹配套餐：剩余${pkg.totalCount - pkg.usedCount - 1}次`, 'info');
+    if (usePkg && pkg) {
+      toast.show(`已匹配套餐：剩${pkgAvailable - 1}次可用`, 'info');
+    } else if (!pkgAvailable && pkg) {
+      toast.show('该套餐已用完（含购物车占用），本次将按原价计费', 'warning');
     }
   };
 
   const updateCart = (idx: number, patch: Partial<CartItem>) => {
-    setCart(cart.map((c, i) => i === idx ? { ...c, ...patch } : c));
+    const target = cart[idx];
+    if (!target) return;
+    const merged: CartItem = { ...target, ...patch };
+
+    // 如果是切换usePackage=true，校验套餐剩余
+    if (patch.usePackage === true || (patch.usePackage === undefined && target.usePackage && patch.quantity !== undefined)) {
+      const pid = merged.packageId;
+      const pkg = memberPkgs.find(p => p.id === pid);
+      if (!pkg) {
+        toast.show('该会员没有此项目的可用套餐', 'warning');
+        return;
+      }
+      // 计算除当前cart[idx]外，其他同packageId已占用的数量
+      const otherUsed = cart
+        .filter((c, i) => i !== idx && c.usePackage && c.packageId === pid)
+        .reduce((sum, c) => sum + c.quantity, 0);
+      const remaining = pkg.totalCount - pkg.usedCount - otherUsed;
+      if (merged.quantity > remaining) {
+        if (patch.usePackage === true) {
+          // 切套餐时，如果剩余不够，不允许切换，或者强制数量为剩余
+          if (remaining <= 0) {
+            toast.show(`套餐仅剩 ${pkg.totalCount - pkg.usedCount} 次（已被购物车占用 ${otherUsed} 次）`, 'warning');
+            return;
+          }
+          toast.show(`套餐仅剩 ${remaining} 次，已自动调整数量`, 'warning');
+          merged.quantity = remaining;
+        } else if (patch.quantity !== undefined) {
+          toast.show(`套餐剩余不足（仅剩 ${remaining} 次），已自动调整数量`, 'warning');
+          merged.quantity = remaining;
+        }
+      }
+    }
+    if (merged.quantity < 1) merged.quantity = 1;
+    setCart(cart.map((c, i) => i === idx ? merged : c));
   };
 
   const removeCart = (idx: number) => setCart(cart.filter((_, i) => i !== idx));
+
+  // 计算每套餐卡在购物车中的占用量
+  const packageOccupancy = useMemo(() => {
+    const map = new Map<string, number>();
+    cart.forEach(c => {
+      if (c.usePackage && c.packageId) {
+        map.set(c.packageId, (map.get(c.packageId) || 0) + c.quantity);
+      }
+    });
+    return map;
+  }, [cart]);
 
   // Totals
   const { subtotal, packageDeduct, payable, pointsUsed, maxPointsUsed } = useMemo(() => {
@@ -184,6 +239,26 @@ export const Cashier: React.FC = () => {
   const confirmPay = () => {
     if (!canPay || !member) return;
 
+    // 【关键校验】套餐扣次不能超过剩余数量，防止变负
+    const deductions: { packageCardId: string; count: number }[] = [];
+    cart.forEach(c => {
+      if (c.usePackage && c.packageId) {
+        const d = deductions.find(x => x.packageCardId === c.packageId);
+        if (d) d.count += c.quantity;
+        else deductions.push({ packageCardId: c.packageId, count: c.quantity });
+      }
+    });
+    for (const d of deductions) {
+      const pkg = allPackages.find(p => p.id === d.packageCardId);
+      if (!pkg) continue;
+      const remain = pkg.totalCount - pkg.usedCount;
+      if (d.count > remain) {
+        toast.show(`【${pkg.serviceItemName}】套餐不足：剩余${remain}次，本次需扣${d.count}次，请调整后再结账`, 'error');
+        return;
+      }
+      if (d.count <= 0) continue;
+    }
+
     // Build transaction items
     const items: TransactionItem[] = cart.map(c => {
       const actualAmount = c.usePackage ? 0 : c.service.price * c.quantity;
@@ -196,20 +271,11 @@ export const Cashier: React.FC = () => {
         employeeName: c.employeeName,
         usePackage: c.usePackage,
         packageId: c.packageId,
+        actualAmount,
         commissionAmount: c.usePackage
           ? Math.round(c.service.price * c.quantity * 0.1 * 100) / 100
           : calcCommission(c.service, c.quantity, actualAmount),
       };
-    });
-
-    // Build package deductions
-    const deductions: { packageCardId: string; count: number }[] = [];
-    cart.forEach(c => {
-      if (c.usePackage && c.packageId) {
-        const d = deductions.find(x => x.packageCardId === c.packageId);
-        if (d) d.count += c.quantity;
-        else deductions.push({ packageCardId: c.packageId, count: c.quantity });
-      }
     });
 
     addTransaction({
@@ -488,7 +554,7 @@ export const Cashier: React.FC = () => {
                               <div className="text-right">
                                 {c.usePackage ? (
                                   <span className="text-sm font-semibold text-amber-600">套餐扣次{c.packageId && pkg
-                                    ? ` 剩${pkg.totalCount - pkg.usedCount - c.quantity}次`
+                                    ? ` 剩${Math.max(0, pkg.totalCount - pkg.usedCount - (packageOccupancy.get(pkg.id) || 0))}次`
                                     : ''}</span>
                                 ) : (
                                   <span className="text-sm font-bold text-brand-600 tabular-nums">
