@@ -120,3 +120,30 @@ export interface Coupon {
   isUsed: boolean;
   createdAt: string;
 }
+
+export type AccountFlowType = 'deposit' | 'package_buy' | 'consume' | 'adjust';
+
+export interface PaymentDetail {
+  balancePaid: number;
+  cashPaid: number;
+  wechatPaid: number;
+  alipayPaid: number;
+}
+
+export interface AccountFlow {
+  id: string;
+  memberId: string;
+  memberName: string;
+  type: AccountFlowType;
+  title: string;
+  amount: number;
+  balanceChange: number;
+  pointsChange: number;
+  paymentDetail: PaymentDetail;
+  operatorId: string;
+  operatorName: string;
+  transactionId?: string;
+  packageCardId?: string;
+  remark?: string;
+  createdAt: string;
+}

@@ -72,9 +72,9 @@ export const Settings: React.FC = () => {
   };
 
   const doReset = () => {
-    resetData();
+    resetData(true); // force: 强制重置演示数据
     setConfirmReset(false);
-    toast.show('数据已重置');
+    toast.show('演示数据已完全重置');
     setTimeout(() => logout(), 600);
   };
 
