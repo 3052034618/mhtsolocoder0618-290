@@ -1,0 +1,128 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600;700&family=Noto+Serif+SC:wght@500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body, #root {
+    height: 100%;
+  }
+  body {
+    @apply font-sans text-salon-ink bg-salon-bg antialiased;
+    background-image:
+      radial-gradient(ellipse 80% 50% at 20% -10%, rgba(212,168,83,0.10) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 40% at 100% 10%, rgba(232,180,184,0.08) 0%, transparent 60%);
+    background-attachment: fixed;
+  }
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+  ::selection { @apply bg-brand-200 text-brand-800; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-salon-line rounded-full;
+  }
+  ::-webkit-scrollbar-thumb:hover { @apply bg-brand-300; }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm
+           transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-300
+           disabled:opacity-50 disabled:cursor-not-allowed select-none;
+  }
+  .btn-primary {
+    @apply btn text-white bg-brand-gradient shadow-soft hover:shadow-glow hover:-translate-y-0.5
+           active:translate-y-0;
+    background-size: 200% 200%;
+    background-position: 0% 50%;
+  }
+  .btn-primary:hover { background-position: 100% 50%; }
+  .btn-ghost {
+    @apply btn text-salon-ink bg-white border border-salon-line hover:bg-brand-50 hover:border-brand-200 shadow-card;
+  }
+  .btn-danger {
+    @apply btn text-white bg-gradient-to-br from-rose-400 to-rose-600 shadow-soft hover:shadow-lg hover:-translate-y-0.5;
+  }
+  .btn-soft {
+    @apply btn text-brand-700 bg-brand-50 border border-brand-100 hover:bg-brand-100;
+  }
+
+  .input {
+    @apply w-full px-4 py-2.5 rounded-xl bg-white border border-salon-line text-sm text-salon-ink
+           placeholder:text-salon-sub/70 transition-all
+           focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-400
+           hover:border-brand-200;
+  }
+  .input-sm { @apply px-3 py-2 text-xs; }
+
+  .card {
+    @apply bg-white rounded-2xl shadow-card border border-white/60 backdrop-blur
+           transition-all duration-300;
+  }
+  .card-hover { @apply card hover:shadow-soft hover:-translate-y-0.5; }
+
+  .badge {
+    @apply inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border;
+  }
+
+  .nav-item {
+    @apply flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium
+           text-salon-sub transition-all duration-200;
+  }
+  .nav-item:hover { @apply text-brand-700 bg-brand-50/60; }
+  .nav-item.active {
+    @apply text-white bg-brand-gradient shadow-soft;
+  }
+  .nav-item.active svg { @apply stroke-white; }
+
+  .stat-card {
+    @apply relative overflow-hidden rounded-2xl p-5 text-white shadow-soft;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium
+           bg-brand-50 text-brand-700 border border-brand-100;
+  }
+
+  .divider { @apply h-px bg-salon-line my-4; }
+
+  .section-title {
+    @apply font-display text-lg font-semibold text-salon-ink flex items-center gap-2;
+  }
+
+  .form-label {
+    @apply block text-xs font-medium text-salon-sub mb-1.5;
+  }
+
+  .gradient-border {
+    position: relative;
+    background: white;
+    border-radius: 16px;
+  }
+  .gradient-border::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    padding: 1.5px;
+    border-radius: inherit;
+    background: linear-gradient(135deg, #D4A853, #E8B4B8, #D4A853);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+            mask-composite: exclude;
+    pointer-events: none;
+    opacity: 0.5;
+  }
+}
+
+@layer utilities {
+  .text-balance { text-wrap: balance; }
+  .mask-fade-b {
+    mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
+  }
+  .scrollbar-thin::-webkit-scrollbar { width: 6px; height: 6px; }
+}
+
+.recharts-tooltip-wrapper { outline: none; }
